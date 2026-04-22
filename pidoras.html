@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Словле - P2P Мультиплеер</title>
+    <title>Словле - Локальный Мультиплеер</title>
     <style>
         * {
             margin: 0;
@@ -81,7 +81,7 @@
             margin-bottom: 5px;
         }
 
-        input[type="text"] {
+        input[type="text"], textarea {
             width: 100%;
             padding: 15px 20px;
             border-radius: 12px;
@@ -91,13 +91,21 @@
             font-size: 1.1em;
             outline: none;
             transition: border-color 0.3s;
+            font-family: 'Courier New', monospace;
         }
 
-        input[type="text"]:focus {
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-size: 0.75em;
+            line-height: 1.3;
+        }
+
+        input[type="text"]:focus, textarea:focus {
             border-color: #e94560;
         }
 
-        input[type="text"]::placeholder {
+        input[type="text"]::placeholder, textarea::placeholder {
             color: rgba(255,255,255,0.4);
         }
 
@@ -136,6 +144,12 @@
 
         .btn-secondary:hover:not(:disabled) {
             background: rgba(255,255,255,0.2);
+        }
+
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 0.9em;
+            width: auto;
         }
 
         .game-mode-grid {
@@ -177,35 +191,53 @@
             color: #aaa;
         }
 
-        .room-code-display {
+        .code-box {
             background: rgba(233, 69, 96, 0.2);
             border: 2px dashed #e94560;
             border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
         }
 
-        .room-code-label {
-            font-size: 0.9em;
+        .code-label {
+            font-size: 0.85em;
             color: #aaa;
             margin-bottom: 8px;
         }
 
-        .room-code {
-            font-size: 2.5em;
-            font-weight: bold;
-            letter-spacing: 8px;
-            color: #e94560;
+        .code-content {
             font-family: 'Courier New', monospace;
-            cursor: pointer;
-            user-select: all;
+            font-size: 0.7em;
+            color: #e94560;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            line-height: 1.4;
         }
 
-        .copy-hint {
-            font-size: 0.8em;
-            color: #aaa;
-            margin-top: 5px;
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .status-connected {
+            background: rgba(39, 174, 96, 0.3);
+            color: #2ecc71;
+        }
+
+        .status-waiting {
+            background: rgba(52, 152, 219, 0.3);
+            color: #3498db;
         }
 
         .loading {
@@ -225,24 +257,6 @@
 
         @keyframes spin {
             to { transform: rotate(360deg); }
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            margin-bottom: 15px;
-        }
-
-        .status-connected {
-            background: rgba(39, 174, 96, 0.3);
-            color: #2ecc71;
-        }
-
-        .status-waiting {
-            background: rgba(52, 152, 219, 0.3);
-            color: #3498db;
         }
 
         /* GAME SCREEN */
@@ -556,12 +570,29 @@
             width: 100%;
         }
 
+        .steps {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .steps ol {
+            margin-left: 20px;
+        }
+
+        .steps li {
+            margin-bottom: 8px;
+        }
+
         @media (max-width: 480px) {
             h1 { font-size: 2em; }
             .grid-cell { width: 45px; height: 45px; font-size: 1.3em; }
             .key { min-width: 28px; padding: 10px 5px; font-size: 0.8em; }
             .game-mode-grid { grid-template-columns: 1fr; }
-            .room-code { font-size: 2em; letter-spacing: 4px; }
         }
     </style>
 </head>
@@ -570,7 +601,7 @@
 <!-- ЭКРАН: ГЛАВНОЕ МЕНЮ -->
 <div class="screen active" id="screen-menu">
     <h1>🔤 Словле</h1>
-    <p class="subtitle">P2P игра без серверов!</p>
+    <p class="subtitle">Локальный мультиплеер!</p>
     
     <div class="card">
         <p class="player-label">👤 Твой никнейм</p>
@@ -580,43 +611,61 @@
     <div class="card">
         <h2>Выбери режим</h2>
         <div class="game-mode-grid">
-            <div class="mode-card" onclick="createRoom()">
+            <div class="mode-card" onclick="createConnection()">
                 <div class="mode-icon">🎮</div>
                 <div class="mode-title">Создать комнату</div>
-                <div class="mode-desc">Получи код для друга</div>
+                <div class="mode-desc">Получи код</div>
             </div>
             <div class="mode-card" onclick="showJoinScreen()">
                 <div class="mode-icon">🔗</div>
                 <div class="mode-title">Подключиться</div>
-                <div class="mode-desc">Введи код друга</div>
+                <div class="mode-desc">Введи код</div>
             </div>
         </div>
     </div>
 
     <div class="card" style="font-size: 0.85em; color: #aaa;">
-        <p>💡 <strong>P2P соединение:</strong> данные идут напрямую между браузерами</p>
-        <p>💡 <strong>Без серверов:</strong> всё работает локально</p>
+        <p>💡 <strong>100% локально:</strong> без серверов и интернета</p>
+        <p>💡 <strong>Простой обмен:</strong> скопируй код → отправь другу</p>
     </div>
 </div>
 
-<!-- ЭКРАН: СОЗДАНИЕ КОМНАТЫ -->
-<div class="screen" id="screen-host">
-    <h1>🎮 Создание комнаты</h1>
+<!-- ЭКРАН: СОЗДАНИЕ (ШАГ 1) -->
+<div class="screen" id="screen-host-step1">
+    <h1>🎮 Шаг 1/2</h1>
     
     <div class="card">
-        <div class="room-code-display">
-            <div class="room-code-label">Твой ID для подключения</div>
-            <div class="room-code" id="my-peer-id" onclick="copyPeerId()">Загрузка...</div>
-            <div class="copy-hint">👆 Нажми, чтобы скопировать</div>
+        <h2>Твой код подключения</h2>
+        <div class="code-box">
+            <button class="btn-small btn-primary copy-btn" onclick="copyOffer()">📋 Копировать</button>
+            <div class="code-label">Скопируй этот код и отправь другу:</div>
+            <div class="code-content" id="offer-code">Генерация...</div>
         </div>
         
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>Ожидание подключения...</p>
-            <p style="font-size:0.9em; color:#aaa; margin-top:10px;">Отправь свой ID другу!</p>
+        <div class="steps">
+            <ol>
+                <li>Скопируй код выше (кнопка 📋)</li>
+                <li>Отправь другу (мессенджер, почта, etc)</li>
+                <li>Жди ответный код от друга</li>
+            </ol>
         </div>
     </div>
 
+    <button class="btn-primary" onclick="showHostStep2()">➡️ Получил ответный код</button>
+    <button class="btn-secondary" onclick="backToMenu()">❌ Отменить</button>
+</div>
+
+<!-- ЭКРАН: СОЗДАНИЕ (ШАГ 2) -->
+<div class="screen" id="screen-host-step2">
+    <h1>🎮 Шаг 2/2</h1>
+    
+    <div class="card">
+        <h2>Введи ответный код</h2>
+        <p class="player-label">Код от друга:</p>
+        <textarea id="answer-input" placeholder="Вставь ответный код от друга сюда..."></textarea>
+    </div>
+
+    <button class="btn-primary" onclick="completeConnection()">✅ Подключиться</button>
     <button class="btn-secondary" onclick="backToMenu()">❌ Отменить</button>
 </div>
 
@@ -625,24 +674,45 @@
     <h1>🔗 Подключение</h1>
     
     <div class="card">
-        <p class="player-label">🔢 ID хоста</p>
-        <input type="text" id="peer-id-input" placeholder="Вставь ID от друга..." style="text-align:center;">
-        <button class="btn-primary" onclick="connectToPeer()" style="margin-top: 15px;">🚀 Подключиться</button>
+        <h2>Введи код от хоста</h2>
+        <p class="player-label">Код подключения:</p>
+        <textarea id="offer-input" placeholder="Вставь код от друга сюда..."></textarea>
     </div>
 
-    <div id="connection-status" style="display:none;">
-        <div class="card">
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>Подключение к хосту...</p>
-            </div>
+    <button class="btn-primary" onclick="acceptOffer()">➡️ Создать ответный код</button>
+    <button class="btn-secondary" onclick="backToMenu()">❌ Отменить</button>
+</div>
+
+<!-- ЭКРАН: ПОДКЛЮЧЕНИЕ (ОТВЕТ) -->
+<div class="screen" id="screen-join-answer">
+    <h1>🔗 Почти готово!</h1>
+    
+    <div class="card">
+        <h2>Твой ответный код</h2>
+        <div class="code-box">
+            <button class="btn-small btn-primary copy-btn" onclick="copyAnswer()">📋 Копировать</button>
+            <div class="code-label">Отправь этот код хосту:</div>
+            <div class="code-content" id="answer-code">Генерация...</div>
+        </div>
+        
+        <div class="steps">
+            <ol>
+                <li>Скопируй код выше (кнопка 📋)</li>
+                <li>Отправь обратно другу</li>
+                <li>Подключение установится автоматически!</li>
+            </ol>
         </div>
     </div>
 
-    <button class="btn-secondary" onclick="backToMenu()">⬅️ Назад</button>
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>Ожидание подключения...</p>
+    </div>
+
+    <button class="btn-secondary" onclick="backToMenu()">❌ Отменить</button>
 </div>
 
-<!-- ЭКРАН: ЛОББИ (ОБА ПОДКЛЮЧЕНЫ) -->
+<!-- ЭКРАН: ЛОББИ -->
 <div class="screen" id="screen-lobby">
     <h1>🎮 Лобби</h1>
     
@@ -680,7 +750,7 @@
     
     <div class="card">
         <div style="text-align:center; margin-bottom:20px;">
-            <div class="status-badge badge-p1" id="setup-badge">Твоя очередь</div>
+            <div class="status-badge badge-p1">Твоя очередь</div>
             <h2>Введи слово для соперника</h2>
         </div>
         
@@ -767,7 +837,7 @@
     
     <div id="next-round-card" class="card" style="display:none;">
         <h2>Следующий раунд</h2>
-        <p style="color:#aaa; margin-bottom:15px;" id="next-round-desc"></p>
+        <p style="color:#aaa; margin-bottom:15px;">Теперь вы меняетесь ролями!</p>
         <div id="waiting-ready" style="display:none;">
             <div class="loading">
                 <div class="spinner"></div>
@@ -799,35 +869,33 @@
     </div>
 </div>
 
-<!-- PeerJS библиотека -->
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
 <script>
 // ==========================================
-// СОСТОЯНИЕ
+// WEBRTC БЕЗ СЕРВЕРА
 // ==========================================
-let peer = null;
-let conn = null;
+let pc = null;
+let dataChannel = null;
 let isHost = false;
 let myNickname = '';
 let opponentNickname = '';
 let currentRound = 0;
-let myRole = ''; // 'asker' или 'guesser'
+let myRole = '';
 let myWord = '';
 let opponentWord = '';
 let wordLength = 0;
 let guesses = [];
 let attempts = 0;
 let maxAttempts = 10;
-let scores = [0, 0]; // [я, соперник]
+let scores = [0, 0];
 let gameOver = false;
 let keyboardState = {};
 let bothReady = false;
+let pendingIceCandidates = [];
 
 // ==========================================
-// ГЛАВНОЕ МЕНЮ
+// СОЗДАНИЕ ПОДКЛЮЧЕНИЯ
 // ==========================================
-window.createRoom = function() {
+window.createConnection = async function() {
     myNickname = document.getElementById('my-nickname').value.trim();
     if (!myNickname) {
         alert('Введи свой никнейм!');
@@ -835,10 +903,64 @@ window.createRoom = function() {
     }
     
     isHost = true;
-    initPeer();
-    showScreen('screen-host');
+    
+    // Создаём WebRTC соединение
+    pc = new RTCPeerConnection({
+        iceServers: [] // БЕЗ СЕРВЕРОВ!
+    });
+    
+    // Создаём data channel
+    dataChannel = pc.createDataChannel('game');
+    setupDataChannel();
+    
+    // Создаём offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    
+    // Ждём ICE candidates
+    await new Promise(resolve => {
+        if (pc.iceGatheringState === 'complete') {
+            resolve();
+        } else {
+            pc.addEventListener('icegatheringstatechange', () => {
+                if (pc.iceGatheringState === 'complete') {
+                    resolve();
+                }
+            });
+        }
+    });
+    
+    // Показываем код
+    const offerCode = btoa(JSON.stringify(pc.localDescription));
+    document.getElementById('offer-code').textContent = offerCode;
+    
+    showScreen('screen-host-step1');
 };
 
+window.showHostStep2 = function() {
+    showScreen('screen-host-step2');
+};
+
+window.completeConnection = async function() {
+    const answerStr = document.getElementById('answer-input').value.trim();
+    if (!answerStr) {
+        alert('Введи ответный код!');
+        return;
+    }
+    
+    try {
+        const answer = JSON.parse(atob(answerStr));
+        await pc.setRemoteDescription(answer);
+        console.log('Connection established!');
+    } catch (e) {
+        alert('Неверный код! Попробуй ещё раз.');
+        console.error(e);
+    }
+};
+
+// ==========================================
+// ПОДКЛЮЧЕНИЕ К ХОСТУ
+// ==========================================
 window.showJoinScreen = function() {
     myNickname = document.getElementById('my-nickname').value.trim();
     if (!myNickname) {
@@ -847,82 +969,84 @@ window.showJoinScreen = function() {
     }
     
     isHost = false;
-    initPeer();
     showScreen('screen-join');
 };
 
-window.backToMenu = function() {
-    if (peer) peer.destroy();
-    if (conn) conn.close();
-    showScreen('screen-menu');
-};
-
-// ==========================================
-// PEER CONNECTION
-// ==========================================
-function initPeer() {
-    peer = new Peer();
-    
-    peer.on('open', (id) => {
-        console.log('My peer ID:', id);
-        document.getElementById('my-peer-id').textContent = id;
-        
-        if (isHost) {
-            // Слушаем входящие подключения
-            peer.on('connection', (connection) => {
-                conn = connection;
-                setupConnection();
-            });
-        }
-    });
-    
-    peer.on('error', (err) => {
-        console.error('Peer error:', err);
-        alert('Ошибка подключения: ' + err.type);
-    });
-}
-
-window.connectToPeer = function() {
-    const peerId = document.getElementById('peer-id-input').value.trim();
-    if (!peerId) {
-        alert('Введи ID хоста!');
+window.acceptOffer = async function() {
+    const offerStr = document.getElementById('offer-input').value.trim();
+    if (!offerStr) {
+        alert('Введи код от хоста!');
         return;
     }
     
-    document.getElementById('connection-status').style.display = 'block';
-    
-    conn = peer.connect(peerId);
-    setupConnection();
+    try {
+        const offer = JSON.parse(atob(offerStr));
+        
+        // Создаём соединение
+        pc = new RTCPeerConnection({
+            iceServers: []
+        });
+        
+        pc.ondatachannel = (event) => {
+            dataChannel = event.channel;
+            setupDataChannel();
+        };
+        
+        await pc.setRemoteDescription(offer);
+        
+        // Создаём answer
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        // Ждём ICE candidates
+        await new Promise(resolve => {
+            if (pc.iceGatheringState === 'complete') {
+                resolve();
+            } else {
+                pc.addEventListener('icegatheringstatechange', () => {
+                    if (pc.iceGatheringState === 'complete') {
+                        resolve();
+                    }
+                });
+            }
+        });
+        
+        // Показываем ответный код
+        const answerCode = btoa(JSON.stringify(pc.localDescription));
+        document.getElementById('answer-code').textContent = answerCode;
+        
+        showScreen('screen-join-answer');
+        
+    } catch (e) {
+        alert('Неверный код! Попробуй ещё раз.');
+        console.error(e);
+    }
 };
 
-function setupConnection() {
-    conn.on('open', () => {
-        console.log('Connected!');
-        
-        // Обмениваемся никнеймами
+// ==========================================
+// DATA CHANNEL
+// ==========================================
+function setupDataChannel() {
+    dataChannel.onopen = () => {
+        console.log('Data channel open!');
         send({ type: 'nickname', nickname: myNickname });
-        
         showLobby();
-    });
+    };
     
-    conn.on('data', (data) => {
+    dataChannel.onmessage = (event) => {
+        const data = JSON.parse(event.data);
         handleMessage(data);
-    });
+    };
     
-    conn.on('close', () => {
+    dataChannel.onclose = () => {
         alert('Соединение потеряно!');
         backToMenu();
-    });
-    
-    conn.on('error', (err) => {
-        console.error('Connection error:', err);
-        alert('Ошибка соединения!');
-    });
+    };
 }
 
 function send(data) {
-    if (conn && conn.open) {
-        conn.send(data);
+    if (dataChannel && dataChannel.readyState === 'open') {
+        dataChannel.send(JSON.stringify(data));
     }
 }
 
@@ -969,6 +1093,21 @@ function handleMessage(data) {
 }
 
 // ==========================================
+// КОПИРОВАНИЕ КОДОВ
+// ==========================================
+window.copyOffer = function() {
+    const code = document.getElementById('offer-code').textContent;
+    navigator.clipboard.writeText(code);
+    alert('Код скопирован! Отправь его другу.');
+};
+
+window.copyAnswer = function() {
+    const code = document.getElementById('answer-code').textContent;
+    navigator.clipboard.writeText(code);
+    alert('Ответный код скопирован! Отправь его хосту.');
+};
+
+// ==========================================
 // ЛОББИ
 // ==========================================
 function showLobby() {
@@ -1000,21 +1139,23 @@ window.startGame = function() {
 };
 
 window.disconnect = function() {
-    if (conn) conn.close();
-    if (peer) peer.destroy();
+    if (dataChannel) dataChannel.close();
+    if (pc) pc.close();
     backToMenu();
+};
+
+window.backToMenu = function() {
+    if (dataChannel) dataChannel.close();
+    if (pc) pc.close();
+    showScreen('screen-menu');
 };
 
 // ==========================================
 // ЗАГАДЫВАНИЕ СЛОВА
 // ==========================================
 function showWordSetup() {
-    const badge = document.getElementById('setup-badge');
-    badge.textContent = 'Твоя очередь загадывать';
-    
     document.getElementById('word-input').value = '';
     document.getElementById('word-error').style.display = 'none';
-    
     showScreen('screen-word-setup');
 }
 
@@ -1041,7 +1182,6 @@ window.confirmWord = function() {
     
     myWord = word;
     send({ type: 'word', word: word });
-    
     showWaiting();
 };
 
@@ -1069,12 +1209,11 @@ function startGuessingPhase() {
         attempts = 0;
         gameOver = false;
         keyboardState = {};
-        
         buildGameScreen();
         showScreen('screen-game');
     } else {
         showWaiting();
-        document.getElementById('waiting-text').textContent = 'Соперник угадывает твоё слово...';
+        document.getElementById('waiting-text').textContent = 'Соперник угадывает...';
     }
 }
 
@@ -1084,10 +1223,7 @@ function buildGameScreen() {
     document.getElementById('header-p1-score').textContent = scores[0] ? `${scores[0]} попыток` : '—';
     document.getElementById('header-p2-score').textContent = scores[1] ? `${scores[1]} попыток` : '—';
     
-    const turnEl = document.getElementById('current-guesser');
-    turnEl.textContent = '🎮 Ты угадываешь!';
-    turnEl.className = 'current-turn badge-p1';
-    
+    document.getElementById('current-guesser').textContent = '🎮 Ты угадываешь!';
     document.getElementById('word-length-hint').textContent = 
         `Слово из ${wordLength} букв: ` + '_ '.repeat(wordLength).trim();
     
@@ -1125,9 +1261,6 @@ function buildGameScreen() {
     setTimeout(() => document.getElementById('guess-input').focus(), 300);
 }
 
-// ==========================================
-// КЛАВИАТУРА
-// ==========================================
 const KEYBOARD_ROWS = [
     ['й','ц','у','к','е','н','г','ш','щ','з','х','ъ'],
     ['ф','ы','в','а','п','р','о','л','д','ж','э'],
@@ -1191,7 +1324,7 @@ window.submitGuess = function() {
     if (guess.length === 0) return;
     
     if (guess.length !== wordLength) {
-        showMessage(`❌ Слово должно быть из ${wordLength} букв!`, 'error');
+        showMessage(`❌ Слово из ${wordLength} букв!`, 'error');
         shakeRow(attempts);
         return;
     }
@@ -1256,7 +1389,6 @@ function processGuess(guess) {
     }
     
     attempts++;
-    guesses.push(guess);
     
     setTimeout(() => {
         updateKeyboard();
@@ -1307,15 +1439,14 @@ function shakeRow(rowIndex) {
 // РЕЗУЛЬТАТ
 // ==========================================
 function showRoundResult() {
-    const myScore = scores[0];
-    const won = myScore !== 999;
+    const won = scores[0] !== 999;
     
     document.getElementById('revealed-word').textContent = opponentWord.toUpperCase();
     
     if (won) {
         document.getElementById('round-result-icon').textContent = '🎉';
         document.getElementById('round-result-title').textContent = 'Ты угадал!';
-        document.getElementById('round-result-desc').textContent = `За ${myScore} попыток!`;
+        document.getElementById('round-result-desc').textContent = `За ${scores[0]} попыток!`;
     } else {
         document.getElementById('round-result-icon').textContent = '😔';
         document.getElementById('round-result-title').textContent = 'Не угадал...';
@@ -1325,7 +1456,6 @@ function showRoundResult() {
     if (currentRound === 0) {
         document.getElementById('next-round-card').style.display = 'block';
         document.getElementById('final-card').style.display = 'none';
-        document.getElementById('next-round-desc').textContent = 'Следующий раунд - вы меняетесь ролями!';
     } else {
         document.getElementById('next-round-card').style.display = 'none';
         document.getElementById('final-card').style.display = 'block';
@@ -1408,13 +1538,6 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.add('active');
 }
 
-window.copyPeerId = function() {
-    const id = document.getElementById('my-peer-id').textContent;
-    navigator.clipboard.writeText(id);
-    alert('ID скопирован: ' + id);
-};
-
-// Автозаполнение никнейма
 const savedNick = localStorage.getItem('nickname');
 if (savedNick) {
     document.getElementById('my-nickname').value = savedNick;
