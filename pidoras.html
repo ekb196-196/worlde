@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Словле - P2P Мультиплеер</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 10px;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #e94560, #f5a623);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #f5a623;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .player-label {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1.1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #e94560;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #e94560, #f5a623);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            width: 100%;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .game-mode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .mode-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-card:hover {
+            border-color: #e94560;
+            background: rgba(233, 69, 96, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .mode-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .mode-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .mode-desc {
+            font-size: 0.8em;
+            color: #aaa;
+        }
+
+        .room-code-display {
+            background: rgba(233, 69, 96, 0.2);
+            border: 2px dashed #e94560;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .room-code-label {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .room-code {
+            font-size: 2.5em;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: #e94560;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            user-select: all;
+        }
+
+        .copy-hint {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .status-connected {
+            background: rgba(39, 174, 96, 0.3);
+            color: #2ecc71;
+        }
+
+        .status-waiting {
+            background: rgba(52, 152, 219, 0.3);
+            color: #3498db;
+        }
+
+        /* GAME SCREEN */
+        .game-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .player-info {
+            text-align: center;
+            flex: 1;
+        }
+
+        .player-name {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .player-score {
+            font-size: 0.85em;
+            color: #aaa;
+        }
+
+        .vs-badge {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f5a623;
+            margin: 0 15px;
+        }
+
+        .current-turn {
+            text-align: center;
+            font-size: 1em;
+            margin-bottom: 15px;
+            padding: 8px 20px;
+            border-radius: 50px;
+            display: inline-block;
+        }
+
+        .badge-p1 {
+            background: linear-gradient(90deg, #e94560, #c0392b);
+        }
+
+        .badge-p2 {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+        }
+
+        .grid-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .grid-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .grid-cell {
+            width: 55px;
+            height: 55px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6em;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .grid-cell.filled {
+            border-color: rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .grid-cell.correct {
+            background: #27ae60;
+            border-color: #27ae60;
+            animation: bounce 0.5s ease;
+        }
+
+        .grid-cell.present {
+            background: #f39c12;
+            border-color: #f39c12;
+            animation: bounce 0.5s ease;
+        }
+
+        .grid-cell.absent {
+            background: #555;
+            border-color: #555;
+            animation: bounce 0.5s ease;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .shake {
+            animation: shake 0.4s ease;
+        }
+
+        .input-container {
+            width: 100%;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .input-container input {
+            flex: 1;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            text-align: center;
+        }
+
+        .keyboard {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .keyboard-row {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .key {
+            padding: 12px 8px;
+            min-width: 35px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: none;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .key:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .key.key-correct {
+            background: #27ae60;
+        }
+
+        .key.key-present {
+            background: #f39c12;
+        }
+
+        .key.key-absent {
+            background: #444;
+            color: #888;
+        }
+
+        .key-wide {
+            padding: 12px 15px;
+            font-size: 0.8em;
+        }
+
+        .message {
+            text-align: center;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 1em;
+            font-weight: bold;
+            min-height: 48px;
+        }
+
+        .message.error {
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px solid rgba(233, 69, 96, 0.5);
+            color: #e94560;
+        }
+
+        .message.success {
+            background: rgba(39, 174, 96, 0.2);
+            border: 1px solid rgba(39, 174, 96, 0.5);
+            color: #27ae60;
+        }
+
+        .message.info {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid rgba(52, 152, 219, 0.5);
+            color: #3498db;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 15px;
+            font-size: 0.8em;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .word-length-display {
+            text-align: center;
+            font-size: 0.9em;
+            color: #f5a623;
+            margin-bottom: 10px;
+        }
+
+        .word-hint {
+            font-size: 0.85em;
+            color: #aaa;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .result-card {
+            text-align: center;
+        }
+
+        .winner-text {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #f5a623, #e94560);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .score-display {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .score-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 20px 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .score-name {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .score-number {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .score-p1 { color: #e94560; }
+        .score-p2 { color: #3498db; }
+
+        .word-reveal {
+            font-size: 1.1em;
+            margin: 15px 0;
+            color: #aaa;
+        }
+
+        .word-reveal span {
+            color: #f5a623;
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 2em; }
+            .grid-cell { width: 45px; height: 45px; font-size: 1.3em; }
+            .key { min-width: 28px; padding: 10px 5px; font-size: 0.8em; }
+            .game-mode-grid { grid-template-columns: 1fr; }
+            .room-code { font-size: 2em; letter-spacing: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ЭКРАН: ГЛАВНОЕ МЕНЮ -->
+<div class="screen active" id="screen-menu">
+    <h1>🔤 Словле</h1>
+    <p class="subtitle">P2P игра без серверов!</p>
+    
+    <div class="card">
+        <p class="player-label">👤 Твой никнейм</p>
+        <input type="text" id="my-nickname" placeholder="Введи никнейм..." maxlength="20" value="">
+    </div>
+
+    <div class="card">
+        <h2>Выбери режим</h2>
+        <div class="game-mode-grid">
+            <div class="mode-card" onclick="createRoom()">
+                <div class="mode-icon">🎮</div>
+                <div class="mode-title">Создать комнату</div>
+                <div class="mode-desc">Получи код для друга</div>
+            </div>
+            <div class="mode-card" onclick="showJoinScreen()">
+                <div class="mode-icon">🔗</div>
+                <div class="mode-title">Подключиться</div>
+                <div class="mode-desc">Введи код друга</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="font-size: 0.85em; color: #aaa;">
+        <p>💡 <strong>P2P соединение:</strong> данные идут напрямую между браузерами</p>
+        <p>💡 <strong>Без серверов:</strong> всё работает локально</p>
+    </div>
+</div>
+
+<!-- ЭКРАН: СОЗДАНИЕ КОМНАТЫ -->
+<div class="screen" id="screen-host">
+    <h1>🎮 Создание комнаты</h1>
+    
+    <div class="card">
+        <div class="room-code-display">
+            <div class="room-code-label">Твой ID для подключения</div>
+            <div class="room-code" id="my-peer-id" onclick="copyPeerId()">Загрузка...</div>
+            <div class="copy-hint">👆 Нажми, чтобы скопировать</div>
+        </div>
+        
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Ожидание подключения...</p>
+            <p style="font-size:0.9em; color:#aaa; margin-top:10px;">Отправь свой ID другу!</p>
+        </div>
+    </div>
+
+    <button class="btn-secondary" onclick="backToMenu()">❌ Отменить</button>
+</div>
+
+<!-- ЭКРАН: ПОДКЛЮЧЕНИЕ -->
+<div class="screen" id="screen-join">
+    <h1>🔗 Подключение</h1>
+    
+    <div class="card">
+        <p class="player-label">🔢 ID хоста</p>
+        <input type="text" id="peer-id-input" placeholder="Вставь ID от друга..." style="text-align:center;">
+        <button class="btn-primary" onclick="connectToPeer()" style="margin-top: 15px;">🚀 Подключиться</button>
+    </div>
+
+    <div id="connection-status" style="display:none;">
+        <div class="card">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Подключение к хосту...</p>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-secondary" onclick="backToMenu()">⬅️ Назад</button>
+</div>
+
+<!-- ЭКРАН: ЛОББИ (ОБА ПОДКЛЮЧЕНЫ) -->
+<div class="screen" id="screen-lobby">
+    <h1>🎮 Лобби</h1>
+    
+    <div class="card">
+        <div class="status-badge status-connected">✅ Подключено</div>
+        <h2>Игроки готовы!</h2>
+        <div style="margin: 20px 0;">
+            <p style="font-size:1.1em; margin-bottom:10px;">
+                👤 <strong id="player1-name">Игрок 1</strong>
+            </p>
+            <p style="font-size:1.1em;">
+                👤 <strong id="player2-name">Игрок 2</strong>
+            </p>
+        </div>
+    </div>
+
+    <div id="host-start" style="display:none;">
+        <button class="btn-primary" onclick="startGame()">🚀 Начать игру!</button>
+    </div>
+
+    <div id="guest-wait" style="display:none;">
+        <div class="card">
+            <div class="loading">
+                <p>Ждём, пока хост начнёт игру...</p>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-secondary" onclick="disconnect()">🚪 Выйти</button>
+</div>
+
+<!-- ЭКРАН: ЗАГАДЫВАНИЕ СЛОВА -->
+<div class="screen" id="screen-word-setup">
+    <h1>🔤 Загадай слово</h1>
+    
+    <div class="card">
+        <div style="text-align:center; margin-bottom:20px;">
+            <div class="status-badge badge-p1" id="setup-badge">Твоя очередь</div>
+            <h2>Введи слово для соперника</h2>
+        </div>
+        
+        <input type="text" id="word-input" placeholder="Любое слово..." 
+               style="text-transform: uppercase; letter-spacing: 3px; text-align: center;"
+               oninput="onWordInput()" onkeydown="if(event.key==='Enter') confirmWord()">
+        
+        <p class="word-hint">✅ Слово будет отправлено сопернику</p>
+        
+        <div id="word-error" class="message error" style="display:none; margin-top:15px;"></div>
+    </div>
+    
+    <button class="btn-primary" onclick="confirmWord()">✅ Отправить слово</button>
+</div>
+
+<!-- ЭКРАН: ОЖИДАНИЕ СЛОВА -->
+<div class="screen" id="screen-waiting">
+    <h1>⏳ Ожидание...</h1>
+    
+    <div class="card">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p id="waiting-text">Соперник загадывает слово...</p>
+        </div>
+    </div>
+</div>
+
+<!-- ЭКРАН: ИГРА -->
+<div class="screen" id="screen-game">
+    <div class="game-header">
+        <div class="player-info">
+            <div class="player-name" id="header-p1-name" style="color: #e94560;"></div>
+            <div class="player-score" id="header-p1-score"></div>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="player-info">
+            <div class="player-name" id="header-p2-name" style="color: #3498db;"></div>
+            <div class="player-score" id="header-p2-score"></div>
+        </div>
+    </div>
+
+    <div id="current-guesser" class="current-turn badge-p1"></div>
+
+    <div class="word-length-display" id="word-length-hint"></div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#27ae60"></div>
+            <span>На месте</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#f39c12"></div>
+            <span>Не там</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#555"></div>
+            <span>Нет</span>
+        </div>
+    </div>
+
+    <div id="message-box" class="message" style="display:none;"></div>
+
+    <div class="grid-container">
+        <div class="grid" id="game-grid"></div>
+    </div>
+
+    <div class="input-container">
+        <input type="text" id="guess-input" placeholder="Введи слово..." 
+               oninput="onGuessInput()" onkeydown="if(event.key==='Enter') submitGuess()">
+        <button class="btn-primary" onclick="submitGuess()" style="width:auto; padding: 15px 20px;">↵</button>
+    </div>
+
+    <div class="keyboard" id="keyboard"></div>
+</div>
+
+<!-- ЭКРАН: РЕЗУЛЬТАТ -->
+<div class="screen" id="screen-result">
+    <div class="card result-card">
+        <div id="round-result-icon" style="font-size:3em; margin-bottom:15px;"></div>
+        <h2 id="round-result-title"></h2>
+        <p id="round-result-desc" style="color:#aaa; margin-bottom:20px;"></p>
+        <div class="word-reveal">Слово было: <span id="revealed-word"></span></div>
+    </div>
+    
+    <div id="next-round-card" class="card" style="display:none;">
+        <h2>Следующий раунд</h2>
+        <p style="color:#aaa; margin-bottom:15px;" id="next-round-desc"></p>
+        <div id="waiting-ready" style="display:none;">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Ждём готовности соперника...</p>
+            </div>
+        </div>
+        <button class="btn-primary" id="ready-btn" onclick="readyForNext()">✅ Готов!</button>
+    </div>
+
+    <div id="final-card" class="card" style="display:none;">
+        <h2>Итоги игры!</h2>
+        <div class="score-display">
+            <div class="score-box">
+                <div class="score-name" id="final-p1-name"></div>
+                <div class="score-number score-p1" id="final-p1-score"></div>
+                <div style="font-size:0.8em; color:#aaa;">попыток</div>
+            </div>
+            <div class="score-box">
+                <div class="score-name" id="final-p2-name"></div>
+                <div class="score-number score-p2" id="final-p2-score"></div>
+                <div style="font-size:0.8em; color:#aaa;">попыток</div>
+            </div>
+        </div>
+        <div class="winner-text" id="final-winner"></div>
+        <div class="btn-row" style="margin-top:15px;">
+            <button class="btn-secondary" onclick="disconnect()" style="flex:1;">🏠 В меню</button>
+            <button class="btn-primary" onclick="playAgain()" style="flex:2;">🔄 Сыграть ещё!</button>
+        </div>
+    </div>
+</div>
+
+<!-- PeerJS библиотека -->
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
+// ==========================================
+// СОСТОЯНИЕ
+// ==========================================
+let peer = null;
+let conn = null;
+let isHost = false;
+let myNickname = '';
+let opponentNickname = '';
+let currentRound = 0;
+let myRole = ''; // 'asker' или 'guesser'
+let myWord = '';
+let opponentWord = '';
+let wordLength = 0;
+let guesses = [];
+let attempts = 0;
+let maxAttempts = 10;
+let scores = [0, 0]; // [я, соперник]
+let gameOver = false;
+let keyboardState = {};
+let bothReady = false;
+
+// ==========================================
+// ГЛАВНОЕ МЕНЮ
+// ==========================================
+window.createRoom = function() {
+    myNickname = document.getElementById('my-nickname').value.trim();
+    if (!myNickname) {
+        alert('Введи свой никнейм!');
+        return;
+    }
+    
+    isHost = true;
+    initPeer();
+    showScreen('screen-host');
+};
+
+window.showJoinScreen = function() {
+    myNickname = document.getElementById('my-nickname').value.trim();
+    if (!myNickname) {
+        alert('Введи свой никнейм!');
+        return;
+    }
+    
+    isHost = false;
+    initPeer();
+    showScreen('screen-join');
+};
+
+window.backToMenu = function() {
+    if (peer) peer.destroy();
+    if (conn) conn.close();
+    showScreen('screen-menu');
+};
+
+// ==========================================
+// PEER CONNECTION
+// ==========================================
+function initPeer() {
+    peer = new Peer();
+    
+    peer.on('open', (id) => {
+        console.log('My peer ID:', id);
+        document.getElementById('my-peer-id').textContent = id;
+        
+        if (isHost) {
+            // Слушаем входящие подключения
+            peer.on('connection', (connection) => {
+                conn = connection;
+                setupConnection();
+            });
+        }
+    });
+    
+    peer.on('error', (err) => {
+        console.error('Peer error:', err);
+        alert('Ошибка подключения: ' + err.type);
+    });
+}
+
+window.connectToPeer = function() {
+    const peerId = document.getElementById('peer-id-input').value.trim();
+    if (!peerId) {
+        alert('Введи ID хоста!');
+        return;
+    }
+    
+    document.getElementById('connection-status').style.display = 'block';
+    
+    conn = peer.connect(peerId);
+    setupConnection();
+};
+
+function setupConnection() {
+    conn.on('open', () => {
+        console.log('Connected!');
+        
+        // Обмениваемся никнеймами
+        send({ type: 'nickname', nickname: myNickname });
+        
+        showLobby();
+    });
+    
+    conn.on('data', (data) => {
+        handleMessage(data);
+    });
+    
+    conn.on('close', () => {
+        alert('Соединение потеряно!');
+        backToMenu();
+    });
+    
+    conn.on('error', (err) => {
+        console.error('Connection error:', err);
+        alert('Ошибка соединения!');
+    });
+}
+
+function send(data) {
+    if (conn && conn.open) {
+        conn.send(data);
+    }
+}
+
+function handleMessage(data) {
+    console.log('Received:', data);
+    
+    switch(data.type) {
+        case 'nickname':
+            opponentNickname = data.nickname;
+            document.getElementById('player1-name').textContent = myNickname;
+            document.getElementById('player2-name').textContent = opponentNickname;
+            break;
+            
+        case 'start':
+            currentRound = 0;
+            myRole = data.myRole === 'asker' ? 'guesser' : 'asker';
+            if (myRole === 'asker') {
+                showWordSetup();
+            } else {
+                showWaiting();
+            }
+            break;
+            
+        case 'word':
+            opponentWord = data.word;
+            wordLength = data.word.length;
+            checkBothWords();
+            break;
+            
+        case 'result':
+            scores[1] = data.score;
+            showRoundResult();
+            break;
+            
+        case 'ready':
+            bothReady = true;
+            checkBothReady();
+            break;
+            
+        case 'playAgain':
+            resetGame();
+            break;
+    }
+}
+
+// ==========================================
+// ЛОББИ
+// ==========================================
+function showLobby() {
+    document.getElementById('player1-name').textContent = myNickname;
+    document.getElementById('player2-name').textContent = opponentNickname;
+    
+    if (isHost) {
+        document.getElementById('host-start').style.display = 'block';
+        document.getElementById('guest-wait').style.display = 'none';
+    } else {
+        document.getElementById('host-start').style.display = 'none';
+        document.getElementById('guest-wait').style.display = 'block';
+    }
+    
+    showScreen('screen-lobby');
+}
+
+window.startGame = function() {
+    currentRound = 0;
+    myRole = Math.random() > 0.5 ? 'asker' : 'guesser';
+    
+    send({ type: 'start', myRole: myRole });
+    
+    if (myRole === 'asker') {
+        showWordSetup();
+    } else {
+        showWaiting();
+    }
+};
+
+window.disconnect = function() {
+    if (conn) conn.close();
+    if (peer) peer.destroy();
+    backToMenu();
+};
+
+// ==========================================
+// ЗАГАДЫВАНИЕ СЛОВА
+// ==========================================
+function showWordSetup() {
+    const badge = document.getElementById('setup-badge');
+    badge.textContent = 'Твоя очередь загадывать';
+    
+    document.getElementById('word-input').value = '';
+    document.getElementById('word-error').style.display = 'none';
+    
+    showScreen('screen-word-setup');
+}
+
+window.onWordInput = function() {
+    const input = document.getElementById('word-input');
+    input.value = input.value.replace(/[^а-яёА-ЯЁ]/gi, '').toUpperCase();
+};
+
+window.confirmWord = function() {
+    const word = document.getElementById('word-input').value.trim().toLowerCase();
+    const errBox = document.getElementById('word-error');
+    
+    if (word.length < 2) {
+        errBox.textContent = '❌ Минимум 2 буквы!';
+        errBox.style.display = 'block';
+        return;
+    }
+    
+    if (!/^[а-яё]+$/i.test(word)) {
+        errBox.textContent = '❌ Только русские буквы!';
+        errBox.style.display = 'block';
+        return;
+    }
+    
+    myWord = word;
+    send({ type: 'word', word: word });
+    
+    showWaiting();
+};
+
+function showWaiting() {
+    const text = myRole === 'asker' 
+        ? 'Ожидание соперника...'
+        : 'Соперник загадывает слово...';
+    
+    document.getElementById('waiting-text').textContent = text;
+    showScreen('screen-waiting');
+}
+
+function checkBothWords() {
+    if (myWord && opponentWord) {
+        startGuessingPhase();
+    }
+}
+
+// ==========================================
+// ИГРА
+// ==========================================
+function startGuessingPhase() {
+    if (myRole === 'guesser') {
+        guesses = [];
+        attempts = 0;
+        gameOver = false;
+        keyboardState = {};
+        
+        buildGameScreen();
+        showScreen('screen-game');
+    } else {
+        showWaiting();
+        document.getElementById('waiting-text').textContent = 'Соперник угадывает твоё слово...';
+    }
+}
+
+function buildGameScreen() {
+    document.getElementById('header-p1-name').textContent = myNickname;
+    document.getElementById('header-p2-name').textContent = opponentNickname;
+    document.getElementById('header-p1-score').textContent = scores[0] ? `${scores[0]} попыток` : '—';
+    document.getElementById('header-p2-score').textContent = scores[1] ? `${scores[1]} попыток` : '—';
+    
+    const turnEl = document.getElementById('current-guesser');
+    turnEl.textContent = '🎮 Ты угадываешь!';
+    turnEl.className = 'current-turn badge-p1';
+    
+    document.getElementById('word-length-hint').textContent = 
+        `Слово из ${wordLength} букв: ` + '_ '.repeat(wordLength).trim();
+    
+    const grid = document.getElementById('game-grid');
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < maxAttempts; i++) {
+        const row = document.createElement('div');
+        row.className = 'grid-row';
+        row.id = `row-${i}`;
+        
+        for (let j = 0; j < wordLength; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.id = `cell-${i}-${j}`;
+            
+            if (wordLength > 8) {
+                cell.style.width = '40px';
+                cell.style.height = '40px';
+                cell.style.fontSize = '1.1em';
+            }
+            if (wordLength > 12) {
+                cell.style.width = '32px';
+                cell.style.height = '32px';
+                cell.style.fontSize = '0.9em';
+            }
+            
+            row.appendChild(cell);
+        }
+        grid.appendChild(row);
+    }
+    
+    buildKeyboard();
+    document.getElementById('message-box').style.display = 'none';
+    setTimeout(() => document.getElementById('guess-input').focus(), 300);
+}
+
+// ==========================================
+// КЛАВИАТУРА
+// ==========================================
+const KEYBOARD_ROWS = [
+    ['й','ц','у','к','е','н','г','ш','щ','з','х','ъ'],
+    ['ф','ы','в','а','п','р','о','л','д','ж','э'],
+    ['ВВОД','я','ч','с','м','и','т','ь','б','ю','⌫']
+];
+
+function buildKeyboard() {
+    const keyboard = document.getElementById('keyboard');
+    keyboard.innerHTML = '';
+    
+    KEYBOARD_ROWS.forEach(row => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'keyboard-row';
+        
+        row.forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = 'key';
+            btn.textContent = key.toUpperCase();
+            
+            if (key === 'ВВОД' || key === '⌫') {
+                btn.classList.add('key-wide');
+            }
+            
+            btn.onclick = () => handleKey(key);
+            rowEl.appendChild(btn);
+            
+            if (key !== 'ВВОД' && key !== '⌫') {
+                btn.id = `key-${key}`;
+            }
+        });
+        
+        keyboard.appendChild(rowEl);
+    });
+}
+
+window.handleKey = function(key) {
+    if (gameOver) return;
+    
+    const input = document.getElementById('guess-input');
+    
+    if (key === '⌫') {
+        input.value = input.value.slice(0, -1);
+    } else if (key === 'ВВОД') {
+        submitGuess();
+    } else {
+        input.value += key.toUpperCase();
+    }
+};
+
+window.onGuessInput = function() {
+    const input = document.getElementById('guess-input');
+    input.value = input.value.replace(/[^а-яёА-ЯЁ]/gi, '').toUpperCase();
+};
+
+window.submitGuess = function() {
+    if (gameOver) return;
+    
+    const input = document.getElementById('guess-input');
+    const guess = input.value.trim().toLowerCase();
+    
+    if (guess.length === 0) return;
+    
+    if (guess.length !== wordLength) {
+        showMessage(`❌ Слово должно быть из ${wordLength} букв!`, 'error');
+        shakeRow(attempts);
+        return;
+    }
+    
+    if (!/^[а-яё]+$/i.test(guess)) {
+        showMessage('❌ Только русские буквы!', 'error');
+        return;
+    }
+    
+    processGuess(guess);
+    input.value = '';
+};
+
+function processGuess(guess) {
+    const attempt = attempts;
+    const word = opponentWord;
+    const wordArr = word.split('');
+    const guessArr = guess.split('');
+    
+    const result = new Array(wordLength).fill('absent');
+    const wordUsed = new Array(wordLength).fill(false);
+    const guessUsed = new Array(wordLength).fill(false);
+    
+    for (let i = 0; i < wordLength; i++) {
+        if (guessArr[i] === wordArr[i]) {
+            result[i] = 'correct';
+            wordUsed[i] = true;
+            guessUsed[i] = true;
+        }
+    }
+    
+    for (let i = 0; i < wordLength; i++) {
+        if (guessUsed[i]) continue;
+        for (let j = 0; j < wordLength; j++) {
+            if (wordUsed[j]) continue;
+            if (guessArr[i] === wordArr[j]) {
+                result[i] = 'present';
+                wordUsed[j] = true;
+                break;
+            }
+        }
+    }
+    
+    for (let i = 0; i < wordLength; i++) {
+        const cell = document.getElementById(`cell-${attempt}-${i}`);
+        setTimeout(() => {
+            cell.textContent = guessArr[i].toUpperCase();
+            cell.className = 'grid-cell ' + result[i];
+        }, i * 100);
+        
+        const letter = guessArr[i];
+        const currentStatus = keyboardState[letter];
+        if (currentStatus !== 'correct') {
+            if (result[i] === 'correct') {
+                keyboardState[letter] = 'correct';
+            } else if (result[i] === 'present' && currentStatus !== 'correct') {
+                keyboardState[letter] = 'present';
+            } else if (!currentStatus) {
+                keyboardState[letter] = 'absent';
+            }
+        }
+    }
+    
+    attempts++;
+    guesses.push(guess);
+    
+    setTimeout(() => {
+        updateKeyboard();
+        
+        if (guess === word) {
+            gameOver = true;
+            scores[0] = attempts;
+            showMessage(`🎉 Правильно! За ${attempts} попыток!`, 'success');
+            send({ type: 'result', score: attempts });
+            setTimeout(() => showRoundResult(), 1500);
+        } else if (attempts >= maxAttempts) {
+            gameOver = true;
+            scores[0] = 999;
+            showMessage(`😔 Не угадал! Слово: ${word.toUpperCase()}`, 'error');
+            send({ type: 'result', score: 999 });
+            setTimeout(() => showRoundResult(), 1500);
+        } else {
+            showMessage(`Осталось: ${maxAttempts - attempts}`, 'info');
+        }
+    }, wordLength * 100 + 200);
+}
+
+function updateKeyboard() {
+    for (const [letter, status] of Object.entries(keyboardState)) {
+        const btn = document.getElementById(`key-${letter}`);
+        if (btn) {
+            btn.className = 'key key-' + status;
+        }
+    }
+}
+
+function showMessage(text, type) {
+    const box = document.getElementById('message-box');
+    box.textContent = text;
+    box.className = 'message ' + type;
+    box.style.display = 'block';
+}
+
+function shakeRow(rowIndex) {
+    const row = document.getElementById(`row-${rowIndex}`);
+    if (row) {
+        row.classList.add('shake');
+        setTimeout(() => row.classList.remove('shake'), 400);
+    }
+}
+
+// ==========================================
+// РЕЗУЛЬТАТ
+// ==========================================
+function showRoundResult() {
+    const myScore = scores[0];
+    const won = myScore !== 999;
+    
+    document.getElementById('revealed-word').textContent = opponentWord.toUpperCase();
+    
+    if (won) {
+        document.getElementById('round-result-icon').textContent = '🎉';
+        document.getElementById('round-result-title').textContent = 'Ты угадал!';
+        document.getElementById('round-result-desc').textContent = `За ${myScore} попыток!`;
+    } else {
+        document.getElementById('round-result-icon').textContent = '😔';
+        document.getElementById('round-result-title').textContent = 'Не угадал...';
+        document.getElementById('round-result-desc').textContent = 'Попытки закончились';
+    }
+    
+    if (currentRound === 0) {
+        document.getElementById('next-round-card').style.display = 'block';
+        document.getElementById('final-card').style.display = 'none';
+        document.getElementById('next-round-desc').textContent = 'Следующий раунд - вы меняетесь ролями!';
+    } else {
+        document.getElementById('next-round-card').style.display = 'none';
+        document.getElementById('final-card').style.display = 'block';
+        showFinal();
+    }
+    
+    showScreen('screen-result');
+}
+
+window.readyForNext = function() {
+    document.getElementById('ready-btn').style.display = 'none';
+    document.getElementById('waiting-ready').style.display = 'block';
+    
+    send({ type: 'ready' });
+    bothReady = true;
+    checkBothReady();
+};
+
+function checkBothReady() {
+    if (bothReady) {
+        currentRound = 1;
+        myRole = myRole === 'asker' ? 'guesser' : 'asker';
+        myWord = '';
+        opponentWord = '';
+        bothReady = false;
+        
+        if (myRole === 'asker') {
+            showWordSetup();
+        } else {
+            showWaiting();
+        }
+    }
+}
+
+function showFinal() {
+    const s0 = scores[0] === 999 ? '∞' : scores[0];
+    const s1 = scores[1] === 999 ? '∞' : scores[1];
+    
+    document.getElementById('final-p1-name').textContent = myNickname;
+    document.getElementById('final-p2-name').textContent = opponentNickname;
+    document.getElementById('final-p1-score').textContent = s0;
+    document.getElementById('final-p2-score').textContent = s1;
+    
+    let winnerText = '';
+    if (scores[0] === 999 && scores[1] === 999) {
+        winnerText = '🤝 Никто не угадал!';
+    } else if (scores[0] === 999) {
+        winnerText = `🏆 Победил: ${opponentNickname}!`;
+    } else if (scores[1] === 999) {
+        winnerText = `🏆 Победил: ${myNickname}!`;
+    } else if (scores[0] < scores[1]) {
+        winnerText = `🏆 Победил: ${myNickname}!`;
+    } else if (scores[1] < scores[0]) {
+        winnerText = `🏆 Победил: ${opponentNickname}!`;
+    } else {
+        winnerText = '🤝 Ничья!';
+    }
+    
+    document.getElementById('final-winner').textContent = winnerText;
+}
+
+window.playAgain = function() {
+    send({ type: 'playAgain' });
+    resetGame();
+};
+
+function resetGame() {
+    scores = [0, 0];
+    currentRound = 0;
+    myWord = '';
+    opponentWord = '';
+    showLobby();
+}
+
+// ==========================================
+// УТИЛИТЫ
+// ==========================================
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+}
+
+window.copyPeerId = function() {
+    const id = document.getElementById('my-peer-id').textContent;
+    navigator.clipboard.writeText(id);
+    alert('ID скопирован: ' + id);
+};
+
+// Автозаполнение никнейма
+const savedNick = localStorage.getItem('nickname');
+if (savedNick) {
+    document.getElementById('my-nickname').value = savedNick;
+}
+
+document.getElementById('my-nickname').addEventListener('change', (e) => {
+    localStorage.setItem('nickname', e.target.value);
+});
+</script>
+</body>
+</html>
